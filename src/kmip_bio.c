@@ -1503,14 +1503,15 @@ int kmip_bio_query_with_context(KMIP *ctx, BIO *bio, enum query_function queries
     for(size_t i = 0; i < query_count; i++)
     {
         LinkedListItem *item = ctx->calloc_func(ctx->state, 1, sizeof(LinkedListItem));
-        item->data = &queries[i];
+        item->data = ctx->calloc_func(ctx->state, 1, sizeof(int32));
+        *(int32*)item->data = queries[i];
         kmip_linked_list_enqueue(funclist, item);
     }
-    Functions functions = {0};
-    functions.function_list = funclist;
+    Functions * functions = ctx->calloc_func(ctx->state, 1, sizeof(Functions));
+    functions->function_list = funclist;
 
     QueryRequestPayload qrp = {0};
-    qrp.functions = &functions;
+    qrp.functions = functions;
 
     RequestBatchItem rbi = {0};
     kmip_init_request_batch_item(&rbi);
