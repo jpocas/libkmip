@@ -168,7 +168,7 @@ $(LIB_DIR):
 install: all
 	mkdir -p $(DEST_DIR)$(PREFIX)/bin/$(KMIP)
 	mkdir -p $(DEST_DIR)$(PREFIX)/include/$(KMIP)
-	mkdir -p $(DEST_DIR)$(PREFIX)/lib
+	mkdir -p $(DEST_DIR)$(PREFIX)/$(LIB_DIR)
 	mkdir -p $(DEST_DIR)$(PREFIX)/src/$(KMIP)
 	mkdir -p $(DEST_DIR)$(PREFIX)/share/doc/$(KMIP)/src
 	cp $(BIN_DIR)/demo_create $(DEST_DIR)$(PREFIX)/bin/$(KMIP)
@@ -178,11 +178,11 @@ install: all
 	cp -r $(DOCS_DIR)/source/. $(DEST_DIR)$(PREFIX)/share/doc/$(KMIP)/src
 	cp $(SRC_DIR)/*.c $(DEST_DIR)$(PREFIX)/src/$(KMIP)
 	cp $(INC_DIR)/*.h $(DEST_DIR)$(PREFIX)/include/$(KMIP)
-	cp $(LIB_DIR)/* $(DEST_DIR)$(PREFIX)/lib
-	ln -sf $(LIB_NAME) $(DEST_DIR)$(PREFIX)/lib/$(LINK_NAME)
-	ln -sf $(LIB_NAME) $(DEST_DIR)$(PREFIX)/lib/$(SO_NAME)
-	ln -sf $(LIB_CORE_NAME) $(DEST_DIR)$(PREFIX)/lib/$(LINK_CORE_NAME)
-	ln -sf $(LIB_CORE_NAME) $(DEST_DIR)$(PREFIX)/lib/$(SO_CORE_NAME)
+	cp $(LIB_DIR)/* $(DEST_DIR)$(PREFIX)/$(LIB_DIR)
+	ln -sf $(LIB_NAME) $(DEST_DIR)$(PREFIX)/$(LIB_DIR)/$(LINK_NAME)
+	ln -sf $(LIB_NAME) $(DEST_DIR)$(PREFIX)/$(LIB_DIR)/$(SO_NAME)
+	ln -sf $(LIB_CORE_NAME) $(DEST_DIR)$(PREFIX)/$(LIB_DIR)/$(LINK_CORE_NAME)
+	ln -sf $(LIB_CORE_NAME) $(DEST_DIR)$(PREFIX)/$(LIB_DIR)/$(SO_CORE_NAME)
 
 install_html_docs: html_docs
 	mkdir -p $(DEST_DIR)$(PREFIX)/share/doc/$(KMIP)/html
@@ -193,11 +193,11 @@ uninstall:
 	rm -rf $(DEST_DIR)$(PREFIX)/include/$(KMIP)
 	rm -rf $(DEST_DIR)$(PREFIX)/src/$(KMIP)
 	rm -rf $(DEST_DIR)$(PREFIX)/share/doc/$(KMIP)
-	rm -r $(DEST_DIR)$(PREFIX)/lib/$(LINK_NAME)*
-	rm -r $(DEST_DIR)$(PREFIX)/lib/$(LINK_CORE_NAME)*
-	rm -r $(DEST_DIR)$(PREFIX)/lib/$(ARC_NAME)
-	rm -r $(DEST_DIR)$(PREFIX)/lib/$(ARC_CORE_NAME)
-	rm -r $(DEST_DIR)$(PREFIX)/lib/$(ARC_SGX_NAME)
+	rm -r $(DEST_DIR)$(PREFIX)/$(LIB_DIR)/$(LINK_NAME)*
+	rm -r $(DEST_DIR)$(PREFIX)/$(LIB_DIR)/$(LINK_CORE_NAME)*
+	rm -r $(DEST_DIR)$(PREFIX)/$(LIB_DIR)/$(ARC_NAME)
+	rm -r $(DEST_DIR)$(PREFIX)/$(LIB_DIR)/$(ARC_CORE_NAME)
+	rm -r $(DEST_DIR)$(PREFIX)/$(LIB_DIR)/$(ARC_SGX_NAME)
 
 uninstall_html_docs:
 	rm -rf $(DEST_DIR)$(PREFIX)/share/doc/$(KMIP)/html
