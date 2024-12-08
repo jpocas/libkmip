@@ -1726,7 +1726,7 @@ int kmip_bio_locate_with_context(KMIP *ctx, BIO *bio, Attribute* attribs, size_t
         return(result);
     }
 
-    kmip_free_locate_request_payload(ctx, &lrp);
+    kmip_free_attributes(ctx, lrp.attributes);
 
 
     if (response)
