@@ -1623,7 +1623,7 @@ int kmip_bio_query_with_context(KMIP *ctx, BIO *bio, enum query_function queries
     return(result_status);
 }
 
-int kmip_bio_locate_with_context(KMIP *ctx, BIO *bio, Attribute* attribs, size_t attrib_count, LocateResponse* locate_result)
+int kmip_bio_locate_with_context(KMIP *ctx, BIO *bio, Attribute* attribs, size_t attrib_count, LocateResponse* locate_result, int max_items, int item_offset)
 {
     if (ctx == NULL || bio == NULL || attribs == NULL || attrib_count == 0 || locate_result == NULL)
     {
@@ -1666,8 +1666,8 @@ int kmip_bio_locate_with_context(KMIP *ctx, BIO *bio, Attribute* attribs, size_t
     }
 
     LocateRequestPayload lrp = {0};
-    lrp.maximum_items = 12;
-    lrp.offset_items = 0;
+    lrp.maximum_items = max_items > MAX_LOCATE_IDS ? MAX_LOCATE_IDS : max_items;
+    lrp.offset_items = item_offset;
     lrp.storage_status_mask = 0;
     lrp.group_member_option = 0;
     lrp.attributes = attribute_list;
