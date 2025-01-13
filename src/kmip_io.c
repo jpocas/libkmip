@@ -1321,7 +1321,32 @@ kmip_print_attribute_type_enum(FILE *f, enum attribute_type value)
         {
             fprintf(f, "Cryptographic Parameters");
         } break;
-        
+
+        case KMIP_ATTR_INITIAL_DATE:
+        {
+            fprintf(f, "Initial Date");
+        } break;
+
+        case KMIP_ATTR_LINK:
+        {
+            fprintf(f, "Link");
+        } break;
+
+        case KMIP_ATTR_EXTRACTABLE:
+        {
+            fprintf(f, "Extractable");
+        } break;
+
+        case KMIP_ATTR_NEVER_EXTRACTABLE:
+        {
+            fprintf(f, "Never Extractable");
+        } break;
+
+        case KMIP_ATTR_DIGEST:
+        {
+            fprintf(f, "Digest");
+        } break;
+
         default:
         fprintf(f, "Unknown");
         break;
@@ -1367,6 +1392,74 @@ kmip_print_state_enum(FILE *f, enum state value)
         fprintf(f, "Unknown");
         break;
     };
+}
+
+void
+kmip_print_link_type_enum(FILE *f, enum link_type value)
+{
+    if(value == 0)
+    {
+        fprintf(f, "-");
+        return;
+    }
+
+    switch (value) {
+    case KMIP_LINK_CERTIFICATE:
+        fprintf(f, "Certificate Link");
+        break;
+
+    case KMIP_LINK_PUBLIC_KEY:
+        fprintf(f, "Public Key Link");
+        break;
+
+    case KMIP_LINK_PRIVATE_KEY:
+        fprintf(f, "Private Key Link");
+        break;
+
+    case KMIP_LINK_DERIVATION_BASE_OBJECT:
+        fprintf(f, "Derivation Base Object Link");
+        break;
+
+    case KMIP_LINK_DERIVED_KEY:
+        fprintf(f, "Derived Key Link");
+        break;
+
+    case KMIP_LINK_REPLACEMENT_OBJECT:
+        fprintf(f, "Replacement Object Link");
+        break;
+
+    case KMIP_LINK_REPLACED_OBJECT_LINK:
+        fprintf(f, "Replaced Object Link");
+        break;
+
+    case KMIP_LINK_PARENT:
+        fprintf(f, "Parent Link");
+        break;
+
+    case KMIP_LINK_CHILD:
+        fprintf(f, "Child Link");
+        break;
+
+    case KMIP_LINK_PREVIOUS:
+        fprintf(f, "Previous Link");
+        break;
+
+    case KMIP_LINK_NEXT:
+        fprintf(f, "Next Link");
+        break;
+
+    case KMIP_LINK_PKCS12_CERTIFICATE:
+        fprintf(f, "PKCS#12 Certificate");
+        break;
+
+    case KMIP_LINK_PKCS12_PASSWORD:
+        fprintf(f, "PKCS#12 Password");
+        break;
+
+    default:
+        fprintf(f, "Unknown");
+        break;
+    }
 }
 
 void
@@ -2527,8 +2620,8 @@ kmip_print_attribute_value(FILE *f, int indent, enum attribute_type type, void *
         case KMIP_ATTR_DEACTIVATION_DATE:
         case KMIP_ATTR_PROCESS_START_DATE:
         case KMIP_ATTR_PROTECT_STOP_DATE:
+        case KMIP_ATTR_INITIAL_DATE:
         {
-            fprintf(f, "\n");
             kmip_print_date_time(f, *(int64 *)value);
         } break;
 
@@ -2536,6 +2629,37 @@ kmip_print_attribute_value(FILE *f, int indent, enum attribute_type type, void *
         {
             fprintf(f, "\n");
             kmip_print_cryptographic_parameters(f, indent + 2, value);
+        } break;
+
+
+        case KMIP_ATTR_EXTRACTABLE: // fallthrough
+        case KMIP_ATTR_NEVER_EXTRACTABLE:
+        {
+            kmip_print_bool(f, *(bool32*)value);
+            fprintf(f, "\n");
+        } break;
+
+        case KMIP_ATTR_LINK:
+        {
+            LinkAttribute *link = (LinkAttribute*) value;
+
+            fprintf(f, "\n%*s%s", indent, "", "Link Type: ");
+            kmip_print_link_type_enum(f, link->link_type);
+            fprintf(f, "\n");
+
+            kmip_print_text_string(f, indent + 2, "Link Object Identifier", link->unique_identifier);
+        } break;
+
+        case KMIP_ATTR_DIGEST:
+        {
+            Digest *digest = (Digest*) value;
+            fprintf(f, "\n%*sHashing Algorithm: ", indent + 2, "");
+            kmip_print_hashing_algorithm_enum(f, digest->hashing_algorithm);
+            fprintf(f, "\n");
+            kmip_print_byte_string(f, indent + 2, "Digest", digest->digest_value);
+            fprintf(f, "%*sKey Format Type: ", indent + 2, "");
+            kmip_print_key_format_type_enum(f, digest->key_format_type);
+            fprintf(f, "\n");
         } break;
 
         default:
@@ -2818,6 +2942,29 @@ kmip_print_destroy_response_payload(FILE *f, int indent, DestroyResponsePayload 
 }
 
 void
+kmip_print_get_attributes_request_payload(FILE *f, int indent, GetAttributesRequestPayload *value)
+{
+    fprintf(f, "%*sGet Attributes Request Payload @ %p\n", indent, "", (void *)value);
+    
+    if(value != NULL)
+    {
+        kmip_print_text_string(f, indent + 2, "Unique Identifier", value->unique_identifier);
+    }
+}
+
+void
+kmip_print_get_attributes_response_payload(FILE *f, int indent, GetAttributesResponsePayload *value)
+{
+    fprintf(f, "%*sGet Attributes Response Payload @ %p\n", indent, "", (void *)value);
+
+    if(value != NULL)
+    {
+        kmip_print_text_string(f, indent + 2, "Unique Identifier", value->unique_identifier);
+        kmip_print_attributes(f, indent + 2, value->attributes);
+    }
+}
+
+void
 kmip_print_request_payload(FILE *f, int indent, enum operation type, void *value)
 {
     switch(type)
@@ -2838,6 +2985,10 @@ kmip_print_request_payload(FILE *f, int indent, enum operation type, void *value
         kmip_print_query_request_payload(f, indent, value);
         break;
 
+        case KMIP_OP_GET_ATTRIBUTES:
+        kmip_print_get_attributes_request_payload(f, indent, (GetAttributesRequestPayload*) value);
+        break;
+
         default:
         fprintf(f, "%*sUnknown Payload @ %p\n", indent, "", value);
         break;
@@ -2856,13 +3007,17 @@ kmip_print_response_payload(FILE *f, int indent, enum operation type, void *valu
         case KMIP_OP_GET:
         kmip_print_get_response_payload(f, indent, (GetResponsePayload *)value);
         break;
-        
+       
         case KMIP_OP_DESTROY:
         kmip_print_destroy_response_payload(f, indent, value);
         break;
         
         case KMIP_OP_QUERY:
         kmip_print_query_response_payload(f, indent, value);
+        break;
+
+        case KMIP_OP_GET_ATTRIBUTES:
+        kmip_print_get_attributes_response_payload(f, indent, (GetAttributesResponsePayload*) value);
         break;
 
         default:

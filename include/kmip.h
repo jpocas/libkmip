@@ -97,7 +97,12 @@ enum attribute_type
     KMIP_ATTR_DEACTIVATION_DATE                = 11,
     KMIP_ATTR_PROCESS_START_DATE               = 12,
     KMIP_ATTR_PROTECT_STOP_DATE                = 13,
-    KMIP_ATTR_CRYPTOGRAPHIC_PARAMETERS         = 14
+    KMIP_ATTR_CRYPTOGRAPHIC_PARAMETERS         = 14,
+    KMIP_ATTR_INITIAL_DATE                     = 15,
+    KMIP_ATTR_LINK                             = 16,
+    KMIP_ATTR_EXTRACTABLE                      = 17,
+    KMIP_ATTR_NEVER_EXTRACTABLE                = 18,
+    KMIP_ATTR_DIGEST                           = 19,
 };
 
 enum batch_error_continuation_option
@@ -666,6 +671,8 @@ enum tag
     KMIP_TAG_CRYPTOGRAPHIC_PARAMETERS         = 0x42002B,
     KMIP_TAG_CRYPTOGRAPHIC_USAGE_MASK         = 0x42002C,
     KMIP_TAG_DEACTIVATION_DATE                = 0x42002F,
+    KMIP_TAG_DIGEST                           = 0x420034,
+    KMIP_TAG_DIGEST_VALUE                     = 0x420035,
     KMIP_TAG_ENCRYPTION_KEY_INFORMATION       = 0x420036,
     KMIP_TAG_HASHING_ALGORITHM                = 0x420038,
     KMIP_TAG_IV_COUNTER_NONCE                 = 0x42003D,
@@ -677,6 +684,9 @@ enum tag
     KMIP_TAG_KEY_VALUE                        = 0x420045,
     KMIP_TAG_KEY_WRAPPING_DATA                = 0x420046,
     KMIP_TAG_KEY_WRAPPING_SPECIFICATION       = 0x420047,
+    KMIP_TAG_LINK                             = 0x42004A,
+    KMIP_TAG_LINK_TYPE                        = 0x42004B,
+    KMIP_TAG_LINK_OBJECT_IDENTIFIER           = 0x42004C,
     KMIP_TAG_MAC_SIGNATURE                    = 0x42004D,
     KMIP_TAG_MAC_SIGNATURE_KEY_INFORMATION    = 0x42004E,
     KMIP_TAG_MAXIMUM_ITEMS                    = 0x42004F,
@@ -796,6 +806,24 @@ enum wrapping_method
     KMIP_WRAP_ENCRYPT_MAC_SIGN = 0x03,
     KMIP_WRAP_MAC_SIGN_ENCRYPT = 0x04,
     KMIP_WRAP_TR31             = 0x05
+};
+
+enum link_type
+{
+    KMIP_LINK_CERTIFICATE            = 0x101,
+    KMIP_LINK_PUBLIC_KEY             = 0x102,
+    KMIP_LINK_PRIVATE_KEY            = 0x103,
+    KMIP_LINK_DERIVATION_BASE_OBJECT = 0x104,
+    KMIP_LINK_DERIVED_KEY            = 0x105,
+    KMIP_LINK_REPLACEMENT_OBJECT     = 0x106,
+    KMIP_LINK_REPLACED_OBJECT_LINK   = 0x107,
+    KMIP_LINK_PARENT                 = 0x108,
+    KMIP_LINK_CHILD                  = 0x109,
+    KMIP_LINK_PREVIOUS               = 0x10A,
+    KMIP_LINK_NEXT                   = 0x10B,
+    KMIP_LINK_PKCS12_CERTIFICATE     = 0x10C,
+    KMIP_LINK_PKCS12_PASSWORD        = 0x10D,
+    /* Extensions start at 0x80000000 */
 };
 
 /*
@@ -1017,6 +1045,12 @@ typedef struct nonce
     ByteString *nonce_value;
 } Nonce;
 
+typedef struct digest {
+    enum hashing_algorithm hashing_algorithm;
+    ByteString *digest_value;
+    enum key_format_type key_format_type;
+} Digest;
+
 /* Operation Payloads */
 
 typedef struct create_request_payload
@@ -1054,6 +1088,18 @@ typedef struct get_response_payload
     TextString *unique_identifier;
     void *object;
 } GetResponsePayload;
+
+typedef struct get_attributes_payload
+{
+    TextString *unique_identifier;
+    // TODO: in theory we can define one or more Attribute References
+} GetAttributesRequestPayload;
+
+typedef struct get_attributes_response_payload
+{
+    TextString *unique_identifier;
+    Attributes *attributes;
+} GetAttributesResponsePayload;
 
 typedef struct destroy_request_payload
 {
@@ -1105,6 +1151,12 @@ typedef struct authentication
     /* TODO (ph) Change this to a linked list */
     Credential *credential;
 } Authentication;
+
+typedef struct link_attribute
+{
+    enum link_type link_type;
+    TextString *unique_identifier;
+} LinkAttribute;
 
 /* Message Structures */
 

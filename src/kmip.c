@@ -868,6 +868,7 @@ kmip_check_enum_value(enum kmip_version version, enum tag t, int value)
             /* KMIP 1.0 */
             case KMIP_OP_CREATE:
             case KMIP_OP_GET:
+            case KMIP_OP_GET_ATTRIBUTES:
             case KMIP_OP_DESTROY:
             case KMIP_OP_QUERY:
             return(KMIP_OK);
@@ -2524,6 +2525,27 @@ kmip_free_get_response_payload(KMIP *ctx, GetResponsePayload *value)
 }
 
 void
+kmip_free_get_attributes_response_payload(KMIP *ctx, GetAttributesResponsePayload *value)
+{
+    if(value != NULL)
+    {
+        if(value->unique_identifier != NULL)
+        {
+            kmip_free_text_string(ctx, value->unique_identifier);
+            ctx->free_func(ctx->state, value->unique_identifier);
+            value->unique_identifier = NULL;
+        }
+
+        kmip_free_attributes(ctx, value->attributes);
+        ctx->free_func(ctx->state, value->attributes);
+        //CHECK_RESULT(ctx, result);
+    }
+
+    return;
+}
+
+
+void
 kmip_free_destroy_request_payload(KMIP *ctx, DestroyRequestPayload *value)
 {
     if(value != NULL)
@@ -2650,6 +2672,10 @@ kmip_free_response_batch_item(KMIP *ctx, ResponseBatchItem *value)
                 
                 case KMIP_OP_DESTROY:
                 kmip_free_destroy_response_payload(ctx, (DestroyResponsePayload *)value->response_payload);
+                break;
+
+                case KMIP_OP_GET_ATTRIBUTES:
+                kmip_free_get_attributes_response_payload(ctx, (GetAttributesResponsePayload *)value->response_payload);
                 break;
                 
                 case KMIP_OP_QUERY:
@@ -4870,6 +4896,65 @@ kmip_compare_get_response_payload(const GetResponsePayload *a, const GetResponse
 }
 
 int
+kmip_compare_get_attributes_request_payload(const GetAttributesRequestPayload *a, const GetAttributesRequestPayload *b)
+{
+    if(a != b)
+    {
+        if((a == NULL) || (b == NULL))
+        {
+            return(KMIP_FALSE);
+        }
+
+        if(a->unique_identifier != b->unique_identifier)
+        {
+            if((a->unique_identifier == NULL) || (b->unique_identifier == NULL))
+            {
+                return(KMIP_FALSE);
+            }
+
+            if(kmip_compare_text_string(a->unique_identifier, b->unique_identifier) == KMIP_FALSE)
+            {
+                return(KMIP_FALSE);
+            }
+        }
+    }
+
+    return(KMIP_TRUE);
+}
+
+int
+kmip_compare_get_attributes_response_payload(const GetAttributesResponsePayload *a, const GetAttributesResponsePayload *b)
+{
+    if(a != b)
+    {
+        if((a == NULL) || (b == NULL))
+        {
+            return(KMIP_FALSE);
+        }
+
+        if(a->unique_identifier != b->unique_identifier)
+        {
+            if((a->unique_identifier == NULL) || (b->unique_identifier == NULL))
+            {
+                return(KMIP_FALSE);
+            }
+
+            if(kmip_compare_text_string(a->unique_identifier, b->unique_identifier) == KMIP_FALSE)
+            {
+                return(KMIP_FALSE);
+            }
+        }
+
+        if(a->attributes != b->attributes && a->attributes->attribute_list != b->attributes->attribute_list)
+        {
+            // FIXME: jpocas need to compare attribute lists, which may be out of order
+        }
+    }
+
+    return(KMIP_TRUE);
+}
+
+int
 kmip_compare_destroy_request_payload(const DestroyRequestPayload *a, const DestroyRequestPayload *b)
 {
     if(a != b)
@@ -4981,6 +5066,13 @@ kmip_compare_request_batch_item(const RequestBatchItem *a, const RequestBatchIte
                 
                 case KMIP_OP_DESTROY:
                 if(kmip_compare_destroy_request_payload((DestroyRequestPayload *)a->request_payload, (DestroyRequestPayload *)b->request_payload) == KMIP_FALSE)
+                {
+                    return(KMIP_FALSE);
+                }
+                break;
+
+                case KMIP_OP_GET_ATTRIBUTES:
+                if(kmip_compare_get_attributes_request_payload((GetAttributesRequestPayload *)a->request_payload, (GetAttributesRequestPayload *)b->request_payload) == KMIP_FALSE)
                 {
                     return(KMIP_FALSE);
                 }
@@ -5097,7 +5189,14 @@ kmip_compare_response_batch_item(const ResponseBatchItem *a, const ResponseBatch
                     return(KMIP_FALSE);
                 }
                 break;
-                
+
+                case KMIP_OP_GET_ATTRIBUTES:
+                if(kmip_compare_get_attributes_response_payload((GetAttributesResponsePayload *)a->response_payload, (GetAttributesResponsePayload *)b->response_payload) == KMIP_FALSE)
+                {
+                    return(KMIP_FALSE);
+                }
+                break;
+
                 case KMIP_OP_QUERY:
                 if(kmip_compare_query_response_payload((QueryResponsePayload *)a->response_payload, (QueryResponsePayload *)b->response_payload) == KMIP_FALSE)
                 {
@@ -7741,6 +7840,60 @@ kmip_encode_get_response_payload(KMIP *ctx, const GetResponsePayload *value)
 }
 
 int
+kmip_encode_get_attributes_request_payload(KMIP *ctx, const GetAttributesRequestPayload *value)
+{
+    int result = 0;
+    result = kmip_encode_int32_be(ctx, TAG_TYPE(KMIP_TAG_REQUEST_PAYLOAD, KMIP_TYPE_STRUCTURE));
+    CHECK_RESULT(ctx, result);
+
+    uint8 *length_index = ctx->index;
+    uint8 *value_index = ctx->index += 4;
+
+    if(value->unique_identifier != NULL)
+    {
+        result = kmip_encode_text_string(ctx, KMIP_TAG_UNIQUE_IDENTIFIER, value->unique_identifier);
+        CHECK_RESULT(ctx, result);
+    }
+
+    uint8 *curr_index = ctx->index;
+    ctx->index = length_index;
+
+    result = kmip_encode_length(ctx, curr_index - value_index);
+    CHECK_RESULT(ctx, result);
+
+    ctx->index = curr_index;
+
+    return(KMIP_OK);
+}
+
+int
+kmip_encode_get_attributes_response_payload(KMIP *ctx, const GetAttributesResponsePayload *value)
+{
+    int result = 0;
+    result = kmip_encode_int32_be(ctx, TAG_TYPE(KMIP_TAG_REQUEST_PAYLOAD, KMIP_TYPE_STRUCTURE));
+    CHECK_RESULT(ctx, result);
+
+    uint8 *length_index = ctx->index;
+    uint8 *value_index = ctx->index += 4;
+
+    if(value->unique_identifier != NULL)
+    {
+        result = kmip_encode_text_string(ctx, KMIP_TAG_UNIQUE_IDENTIFIER, value->unique_identifier);
+        CHECK_RESULT(ctx, result);
+    }
+
+    uint8 *curr_index = ctx->index;
+    ctx->index = length_index;
+
+    result = kmip_encode_length(ctx, curr_index - value_index);
+    CHECK_RESULT(ctx, result);
+
+    ctx->index = curr_index;
+
+    return(KMIP_OK);
+}
+
+int
 kmip_encode_destroy_request_payload(KMIP *ctx, const DestroyRequestPayload *value)
 {
     int result = 0;
@@ -8230,7 +8383,11 @@ kmip_encode_request_batch_item(KMIP *ctx, const RequestBatchItem *value)
         case KMIP_OP_DESTROY:
         result = kmip_encode_destroy_request_payload(ctx, (DestroyRequestPayload*)value->request_payload);
         break;
-        
+
+        case KMIP_OP_GET_ATTRIBUTES:
+        result = kmip_encode_get_attributes_request_payload(ctx, (GetAttributesRequestPayload*)value->request_payload);
+        break;
+
         case KMIP_OP_QUERY:
         result = kmip_encode_query_request_payload(ctx, (QueryRequestPayload*)value->request_payload);
         break;
@@ -8305,6 +8462,10 @@ kmip_encode_response_batch_item(KMIP *ctx, const ResponseBatchItem *value)
         
         case KMIP_OP_DESTROY:
         result = kmip_encode_destroy_response_payload(ctx, (DestroyResponsePayload*)value->response_payload);
+        break;
+
+        case KMIP_OP_GET_ATTRIBUTES:
+        result = kmip_encode_get_attributes_response_payload(ctx, (GetAttributesResponsePayload*)value->response_payload);
         break;
         
         case KMIP_OP_QUERY:
@@ -8813,9 +8974,29 @@ kmip_decode_attribute_name(KMIP *ctx, enum attribute_type *value)
     {
         *value = KMIP_ATTR_CRYPTOGRAPHIC_PARAMETERS;
     }
-    /* TODO (ph) Add all remaining attributes here. */
+    else if ((12 == n.size) && (strncmp(n.value, "Initial Date", 12) == 0))
+    {
+        *value = KMIP_ATTR_INITIAL_DATE;
+    }
+    else if ((4 == n.size) && (strncmp(n.value, "Link", 4) == 0))
+    {
+        *value = KMIP_ATTR_LINK;
+    }
+    else if ((11 == n.size) && (strncmp(n.value, "Extractable", 11) == 0))
+    {
+        *value = KMIP_ATTR_EXTRACTABLE;
+    }
+    else if ((17 == n.size) && (strncmp(n.value, "Never Extractable", 17) == 0))
+    {
+        *value = KMIP_ATTR_NEVER_EXTRACTABLE;
+    }
+    else if ((6 == n.size) && (strncmp(n.value, "Digest", 6) == 0))
+    {
+        *value = KMIP_ATTR_DIGEST;
+    }
     else
     {
+        printf("UNKNOWN ATTR NAME \"%.*s\", len=%lu\n", (int) n.size, n.value, n.size);
         kmip_push_error_frame(ctx, __func__, __LINE__);
         kmip_free_text_string(ctx, &n);
         return(KMIP_ERROR_ATTR_UNSUPPORTED);
@@ -9086,6 +9267,83 @@ kmip_decode_attribute_v1(KMIP *ctx, Attribute *value)
 
             result = kmip_decode_date_time(ctx, t, (int64*)value->value);
             CHECK_RESULT(ctx, result);
+        } break;
+
+        case KMIP_ATTR_INITIAL_DATE:
+        {
+            value->value = ctx->calloc_func(ctx->state, 1, sizeof(int64));
+            CHECK_NEW_MEMORY(ctx, value->value, sizeof(int64), "InitialDate date time");
+
+            result = kmip_decode_date_time(ctx, t, (int64*)value->value);
+            CHECK_RESULT(ctx, result);
+        } break;
+
+        case KMIP_ATTR_LINK:
+        {
+            LinkAttribute *link = ctx->calloc_func(ctx->state, 1, sizeof(LinkAttribute));
+            CHECK_NEW_MEMORY(ctx, link, sizeof(LinkAttribute), "LinkAttribute");
+
+            link->unique_identifier = ctx->calloc_func(ctx->state, 1, sizeof(TextString));
+            CHECK_NEW_MEMORY(ctx, link->unique_identifier, sizeof(TextString), "TextString");
+
+            int32 tag_type = 0;
+            uint32 length = 0;
+
+            kmip_decode_int32_be(ctx, &tag_type);
+            CHECK_TAG_TYPE(ctx, tag_type, t, KMIP_TYPE_STRUCTURE);
+
+            kmip_decode_length(ctx, &length);
+
+            result = kmip_decode_enum(ctx, KMIP_TAG_LINK_TYPE, (enum link_type*) &(link->link_type));
+            CHECK_RESULT(ctx, result);
+
+            result = kmip_decode_text_string(ctx, KMIP_TAG_LINK_OBJECT_IDENTIFIER, (TextString*)link->unique_identifier);
+            CHECK_RESULT(ctx, result);
+
+            value->value = link;
+        } break;
+
+        case KMIP_ATTR_EXTRACTABLE: // fallthrough
+        case KMIP_ATTR_NEVER_EXTRACTABLE:
+        {
+            value->value = ctx->calloc_func(ctx->state, 1, sizeof(bool32));
+            CHECK_NEW_MEMORY(ctx, value->value, sizeof(bool32), "Boolean");
+
+            result = kmip_decode_bool(ctx, t, (bool32*)value->value);
+            CHECK_RESULT(ctx, result);
+        } break;
+
+
+        case KMIP_ATTR_DIGEST:
+        {
+            uint32 length = 0;
+
+            kmip_decode_int32_be(ctx, &tag_type);
+            CHECK_TAG_TYPE(ctx, tag_type, t, KMIP_TYPE_STRUCTURE);
+
+            kmip_decode_length(ctx, &length);
+
+            Digest *digest = ctx->calloc_func(ctx->state, 1, sizeof(Digest));
+            CHECK_NEW_MEMORY(ctx, digest, sizeof(Digest), "Digest");
+
+            result = kmip_decode_enum(ctx, KMIP_TAG_HASHING_ALGORITHM, (enum hashing_algorithm*) &(digest->hashing_algorithm));
+            CHECK_RESULT(ctx, result);
+
+            /* FIXME: jpocas: for objects other than Key or Secret Data, these next two fields are optional and we'd have to fast forward the rest of the length
+               ctx->index += length;
+            */
+
+            digest->digest_value = ctx->calloc_func(ctx->state, 1, sizeof(ByteString));
+            CHECK_NEW_MEMORY(ctx, digest, sizeof(ByteString), "Digest byte string");
+
+            result = kmip_decode_byte_string(ctx, KMIP_TAG_DIGEST_VALUE, digest->digest_value);
+            CHECK_RESULT(ctx, result);
+
+            result = kmip_decode_enum(ctx, KMIP_TAG_KEY_FORMAT_TYPE, (enum key_format_type*) &(digest->key_format_type));
+            CHECK_RESULT(ctx, result);
+
+            value->value = digest;
+
         } break;
 
         default:
@@ -10292,6 +10550,102 @@ kmip_decode_get_response_payload(KMIP *ctx, GetResponsePayload *value)
 }
 
 int
+kmip_decode_get_attributes_request_payload(KMIP *ctx, GetAttributesRequestPayload *value)
+{
+    CHECK_BUFFER_FULL(ctx, 8);
+
+    int result = 0;
+    int32 tag_type = 0;
+    uint32 length = 0;
+
+    kmip_decode_int32_be(ctx, &tag_type);
+    CHECK_TAG_TYPE(ctx, tag_type, KMIP_TAG_REQUEST_PAYLOAD, KMIP_TYPE_STRUCTURE);
+
+    kmip_decode_length(ctx, &length);
+    CHECK_BUFFER_FULL(ctx, length);
+
+    if(kmip_is_tag_next(ctx, KMIP_TAG_UNIQUE_IDENTIFIER))
+    {
+        value->unique_identifier = ctx->calloc_func(ctx->state, 1, sizeof(TextString));
+        CHECK_NEW_MEMORY(ctx, value->unique_identifier, sizeof(TextString), "UniqueIdentifier text string");
+        result = kmip_decode_text_string(ctx, KMIP_TAG_UNIQUE_IDENTIFIER, value->unique_identifier);
+        CHECK_RESULT(ctx, result);
+    }
+
+    return(KMIP_OK);
+}
+
+int
+kmip_decode_get_attributes_response_payload(KMIP *ctx, GetAttributesResponsePayload *value)
+{
+    CHECK_BUFFER_FULL(ctx, 8);
+
+    int result = 0;
+    int32 tag_type = 0;
+    uint32 length = 0;
+
+    kmip_decode_int32_be(ctx, &tag_type);
+    CHECK_TAG_TYPE(ctx, tag_type, KMIP_TAG_RESPONSE_PAYLOAD, KMIP_TYPE_STRUCTURE);
+
+    kmip_decode_length(ctx, &length);
+    CHECK_BUFFER_FULL(ctx, length);
+
+    if(kmip_is_tag_next(ctx, KMIP_TAG_UNIQUE_IDENTIFIER))
+    {
+        value->unique_identifier = ctx->calloc_func(ctx->state, 1, sizeof(TextString));
+        CHECK_NEW_MEMORY(ctx, value->unique_identifier, sizeof(TextString), "UniqueIdentifier text string");
+        result = kmip_decode_text_string(ctx, KMIP_TAG_UNIQUE_IDENTIFIER, value->unique_identifier);
+        CHECK_RESULT(ctx, result);
+    }
+
+    value->attributes = ctx->calloc_func(ctx->state, 1, sizeof(Attributes));
+    if(value->attributes == NULL)
+    {
+        HANDLE_FAILED_ALLOC(ctx, sizeof(Attributes), "Attributes");
+    }
+
+    // KMIP 2.0 uses Attributes (note plural) structure, while older uses zero or more individual Attribute structures (note singular).
+    if(ctx->version < KMIP_2_0) {
+        Attributes *attributes = ctx->calloc_func(ctx->state, 1, sizeof(Attributes));
+        LinkedList *list = ctx->calloc_func(ctx->state, 1, sizeof(LinkedList));
+
+        uint32 tag = kmip_peek_tag(ctx);
+        while(tag == KMIP_TAG_ATTRIBUTE)
+        {
+            LinkedListItem *item = ctx->calloc_func(ctx->state, 1, sizeof(LinkedListItem));
+            CHECK_NEW_MEMORY(ctx, item, sizeof(LinkedListItem), "LinkedListItem");
+
+            item->data = ctx->calloc_func(ctx->state, 1, sizeof(Attribute));
+            CHECK_NEW_MEMORY(ctx, item->data, sizeof(Attribute), "Attribute");
+
+            result = kmip_decode_attribute_v1(ctx, (Attribute*) item->data);
+            CHECK_RESULT(ctx, result);
+
+            kmip_linked_list_enqueue(list, item);
+
+            tag = kmip_peek_tag(ctx);
+        }
+
+        attributes->attribute_list = list;
+        value->attributes = attributes;
+
+    } else {
+        result = kmip_decode_attributes(ctx, value->attributes);
+        if(result != KMIP_OK)
+        {
+            kmip_free_attributes(ctx, value->attributes);
+            ctx->free_func(ctx, value->attributes);
+            value->attributes = NULL;
+
+            HANDLE_FAILURE(ctx, result);
+        }
+    }
+
+    return(KMIP_OK);
+}
+
+
+int
 kmip_decode_destroy_request_payload(KMIP *ctx, DestroyRequestPayload *value)
 {
     CHECK_BUFFER_FULL(ctx, 8);
@@ -10397,7 +10751,13 @@ kmip_decode_request_batch_item(KMIP *ctx, RequestBatchItem *value)
         CHECK_NEW_MEMORY(ctx, value->request_payload, sizeof(DestroyRequestPayload), "DestroyRequestPayload structure");
         result = kmip_decode_destroy_request_payload(ctx, (DestroyRequestPayload*)value->request_payload);
         break;
-        
+
+        case KMIP_OP_GET_ATTRIBUTES:
+        value->request_payload = ctx->calloc_func(ctx->state, 1, sizeof(GetAttributesRequestPayload));
+        CHECK_NEW_MEMORY(ctx, value->request_payload, sizeof(GetAttributesRequestPayload), "GetAttributesRequestPayload structure");
+        result = kmip_decode_get_attributes_request_payload(ctx, (GetAttributesRequestPayload*)value->request_payload);
+        break;
+
         case KMIP_OP_QUERY:
         value->request_payload = ctx->calloc_func(ctx->state, 1, sizeof(QueryRequestPayload));
         CHECK_NEW_MEMORY(ctx, value->request_payload, sizeof(QueryRequestPayload), "QueryRequestPayload structure");
@@ -10495,6 +10855,12 @@ kmip_decode_response_batch_item(KMIP *ctx, ResponseBatchItem *value)
             value->response_payload = ctx->calloc_func(ctx->state, 1, sizeof(DestroyResponsePayload));
             CHECK_NEW_MEMORY(ctx, value->response_payload, sizeof(DestroyResponsePayload), "DestroyResponsePayload structure");
             result = kmip_decode_destroy_response_payload(ctx, value->response_payload);
+            break;
+
+            case KMIP_OP_GET_ATTRIBUTES:
+            value->response_payload = ctx->calloc_func(ctx->state, 1, sizeof(GetAttributesResponsePayload));
+            CHECK_NEW_MEMORY(ctx, value->response_payload, sizeof(GetAttributesResponsePayload), "GetAttributesResponsePayload structure");
+            result = kmip_decode_get_attributes_response_payload(ctx, value->response_payload);
             break;
             
             case KMIP_OP_QUERY:
