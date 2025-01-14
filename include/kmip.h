@@ -103,6 +103,11 @@ enum attribute_type
     KMIP_ATTR_EXTRACTABLE                      = 17,
     KMIP_ATTR_NEVER_EXTRACTABLE                = 18,
     KMIP_ATTR_DIGEST                           = 19,
+    KMIP_ATTR_LAST_CHANGE_DATE                 = 20,
+    KMIP_ATTR_ORIGINAL_CREATION_DATE           = 21,
+
+    KMIP_ATTR_UNKNOWN /* N.b. leave this last! This allows us to decode
+                         skipping past unknown new attributes without throwing an error */
 };
 
 enum batch_error_continuation_option
@@ -1092,7 +1097,8 @@ typedef struct get_response_payload
 typedef struct get_attributes_payload
 {
     TextString *unique_identifier;
-    // TODO: in theory we can define one or more Attribute References
+    /* TODO: (jpocas) in theory we can define one or more Attribute References,
+       but for now we don't specify anything, which returns all Attributes */
 } GetAttributesRequestPayload;
 
 typedef struct get_attributes_response_payload

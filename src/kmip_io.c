@@ -1347,6 +1347,16 @@ kmip_print_attribute_type_enum(FILE *f, enum attribute_type value)
             fprintf(f, "Digest");
         } break;
 
+        case KMIP_ATTR_LAST_CHANGE_DATE:
+        {
+            fprintf(f, "Last Change Date");
+        } break;
+
+        case KMIP_ATTR_ORIGINAL_CREATION_DATE:
+        {
+            fprintf(f, "Original Creation Date");
+        } break;
+
         default:
         fprintf(f, "Unknown");
         break;
@@ -2621,6 +2631,8 @@ kmip_print_attribute_value(FILE *f, int indent, enum attribute_type type, void *
         case KMIP_ATTR_PROCESS_START_DATE:
         case KMIP_ATTR_PROTECT_STOP_DATE:
         case KMIP_ATTR_INITIAL_DATE:
+        case KMIP_ATTR_LAST_CHANGE_DATE:
+        case KMIP_ATTR_ORIGINAL_CREATION_DATE:
         {
             kmip_print_date_time(f, *(int64 *)value);
         } break;

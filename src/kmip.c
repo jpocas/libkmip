@@ -2538,7 +2538,7 @@ kmip_free_get_attributes_response_payload(KMIP *ctx, GetAttributesResponsePayloa
 
         kmip_free_attributes(ctx, value->attributes);
         ctx->free_func(ctx->state, value->attributes);
-        //CHECK_RESULT(ctx, result);
+        value->attributes = NULL;
     }
 
     return;
@@ -8994,12 +8994,18 @@ kmip_decode_attribute_name(KMIP *ctx, enum attribute_type *value)
     {
         *value = KMIP_ATTR_DIGEST;
     }
+    else if ((16 == n.size) && (strncmp(n.value, "Last Change Date", 16) == 0))
+    {
+        *value = KMIP_ATTR_LAST_CHANGE_DATE;
+    }
+    else if ((22 == n.size) && (strncmp(n.value, "Original Creation Date", 22) == 0))
+    {
+        *value = KMIP_ATTR_ORIGINAL_CREATION_DATE;
+    }
     else
     {
-        printf("UNKNOWN ATTR NAME \"%.*s\", len=%lu\n", (int) n.size, n.value, n.size);
-        kmip_push_error_frame(ctx, __func__, __LINE__);
-        kmip_free_text_string(ctx, &n);
-        return(KMIP_ERROR_ATTR_UNSUPPORTED);
+        fprintf(stderr, "Warning: Decoded unknown Attribute name=\"%.*s\", length=%lu\n", (int) n.size, n.value, n.size);
+        *value = KMIP_ATTR_UNKNOWN;
     }
     
     kmip_free_text_string(ctx, &n);
@@ -9057,16 +9063,27 @@ kmip_decode_attribute_v1(KMIP *ctx, Attribute *value)
     int result = 0;
     int32 tag_type = 0;
     uint32 length = 0;
+    uint8 *stashed_index = NULL;
     
     kmip_decode_int32_be(ctx, &tag_type);
     CHECK_TAG_TYPE(ctx, tag_type, KMIP_TAG_ATTRIBUTE, KMIP_TYPE_STRUCTURE);
     
     kmip_decode_length(ctx, &length);
     CHECK_BUFFER_FULL(ctx, length);
-    
+
+    /* Stash the current buffer offset */
+    stashed_index = ctx->index;
+
     result = kmip_decode_attribute_name(ctx, &value->type);
     CHECK_RESULT(ctx, result);
-    
+
+    /* We don't know how to deocde this attribute, log an error and fast-forward */
+    if (KMIP_ATTR_UNKNOWN == value->type) {
+        fprintf(stderr, "Warning: Skipped decoding of unknown Attribute value. length=%u\n", length);
+        ctx->index += (length - (ctx->index - stashed_index)); /* Subtract the length of the attribute name we just decoded */
+        return KMIP_OK;
+    }
+
     if(kmip_is_tag_next(ctx, KMIP_TAG_ATTRIBUTE_INDEX))
     {
         result = kmip_decode_integer(ctx, KMIP_TAG_ATTRIBUTE_INDEX, &value->index);
@@ -9344,6 +9361,24 @@ kmip_decode_attribute_v1(KMIP *ctx, Attribute *value)
 
             value->value = digest;
 
+        } break;
+
+        case KMIP_ATTR_LAST_CHANGE_DATE:
+        {
+            value->value = ctx->calloc_func(ctx->state, 1, sizeof(int64));
+            CHECK_NEW_MEMORY(ctx, value->value, sizeof(int64), "LastChangeDate date time");
+
+            result = kmip_decode_date_time(ctx, t, (int64*)value->value);
+            CHECK_RESULT(ctx, result);
+        } break;
+
+        case KMIP_ATTR_ORIGINAL_CREATION_DATE:
+        {
+            value->value = ctx->calloc_func(ctx->state, 1, sizeof(int64));
+            CHECK_NEW_MEMORY(ctx, value->value, sizeof(int64), "OriginalCreationDate date time");
+
+            result = kmip_decode_date_time(ctx, t, (int64*)value->value);
+            CHECK_RESULT(ctx, result);
         } break;
 
         default:
