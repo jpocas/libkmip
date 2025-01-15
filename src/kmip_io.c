@@ -1438,7 +1438,7 @@ kmip_print_link_type_enum(FILE *f, enum link_type value)
         fprintf(f, "Replacement Object Link");
         break;
 
-    case KMIP_LINK_REPLACED_OBJECT_LINK:
+    case KMIP_LINK_REPLACED_OBJECT:
         fprintf(f, "Replaced Object Link");
         break;
 

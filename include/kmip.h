@@ -821,7 +821,7 @@ enum link_type
     KMIP_LINK_DERIVATION_BASE_OBJECT = 0x104,
     KMIP_LINK_DERIVED_KEY            = 0x105,
     KMIP_LINK_REPLACEMENT_OBJECT     = 0x106,
-    KMIP_LINK_REPLACED_OBJECT_LINK   = 0x107,
+    KMIP_LINK_REPLACED_OBJECT        = 0x107,
     KMIP_LINK_PARENT                 = 0x108,
     KMIP_LINK_CHILD                  = 0x109,
     KMIP_LINK_PREVIOUS               = 0x10A,
