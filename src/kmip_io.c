@@ -324,7 +324,7 @@ kmip_print_operation_enum(FILE *f, enum operation value)
         break;
 
         case KMIP_OP_QUERY:
-        printf("Query");
+        fprintf(f, "Query");
         break;
 
         case KMIP_OP_CANCEL:
