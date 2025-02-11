@@ -1386,6 +1386,74 @@ int kmip_bio_destroy_symmetric_key_with_context(KMIP *ctx, BIO *bio,
     return(result);
 }
 
+
+#define KMIP_MODULO_16(i) ((i) & 0xf)
+
+/**
+ * do a hexdump in widths of 16 bytes with ASCII printout
+ *
+ * @param heading an optional descriptive heading, if not NULL
+ * @param address the address to start the dump from
+ * @param length the number of bytes to dump
+ */
+void kmip_print_hex_dump(const char * heading,
+                         const void * address,
+                         const size_t length)
+{
+    size_t i;
+    unsigned char buffer[17]; // +1 for NULL terminator
+    const unsigned char * pbyte = (const unsigned char *) address;
+
+    if (NULL != heading) {
+        printf("%s:\n", heading);
+    }
+
+    if (0 == length) {
+        fprintf(stderr, "Error: length %lu is invalid\n", length);
+        return;
+    }
+
+    for (i = 0; i < length; ++i) {
+        const size_t mod_index = KMIP_MODULO_16(i); // This calculation is used several times
+
+        /* TODO: JP: we can do some duplicate line detection by accumulating a line's worth of data into a uint128 or similar
+           16 byte container, and then elide that line (or lines) when it's duplicated, but for now printing out empty
+           (or otherwise repetitive buffers) will just be noisy. If we just want zeros detection, which is arguably the most
+           common pattern, it can be even simpler. */
+
+        // This is a new line, so print the previous line's ASCII (if not the first line) and the address
+        if (0 == mod_index) {
+            if (i) {
+                printf("  %s\n", buffer);
+            }
+
+            printf("  0x%04lx: ", i);
+        }
+
+        printf(" %02x", pbyte[i]); // Print hex code for this byte
+
+        // Accumulate ASCII into a buffer for next end of line
+        if (pbyte[i] < 0x20 || pbyte[i] > 0x7e) {
+            buffer[mod_index] = '.';
+        } else {
+            buffer[mod_index] = pbyte[i];
+        }
+
+        buffer[KMIP_MODULO_16(i) + 1] = '\0';
+    }
+
+
+    // Space padding on the last line if needed, so ASCII dump lines up with earlier lines
+    while (KMIP_MODULO_16(i) != 0) {
+        printf("   ");
+        ++i;
+    }
+
+    // Finally, print any remaining ASCII buffer.
+    printf("  %s\n", buffer);
+}
+
+
 int kmip_bio_send_request_encoding(KMIP *ctx, BIO *bio,
                                    char *request, int request_size,
                                    char **response, int *response_size)
@@ -1399,7 +1467,11 @@ int kmip_bio_send_request_encoding(KMIP *ctx, BIO *bio,
     int sent = BIO_write(bio, request, request_size);
     if(sent != request_size)
     {
+        printf("1: sent=%d request_size=%d BIO_should_retry=%d BIO_eof=%d\n", sent, request_size, BIO_should_retry(bio), BIO_eof(bio));
         return(KMIP_IO_FAILURE);
+    } else {
+        printf("1: sent=%d\n", sent);
+        kmip_print_hex_dump("sent", request, (int) request_size);
     }
     
     /* Read the response message. Dynamically resize the receiving buffer */
@@ -1419,9 +1491,17 @@ int kmip_bio_send_request_encoding(KMIP *ctx, BIO *bio,
     int recv = BIO_read(bio, encoding, buffer_total_size);
     if((size_t)recv != buffer_total_size)
     {
+        printf("2: recv=%d buffer_total_size=%lu BIO_should_retry=%d, BIO_eof=%d\n", recv, buffer_total_size, BIO_should_retry(bio), BIO_eof(bio));
+        if (recv > 0) {
+            kmip_print_hex_dump("recv", encoding, (int) buffer_total_size);
+        }
+
         kmip_free_buffer(ctx, encoding, buffer_total_size);
         encoding = NULL;
         return(KMIP_IO_FAILURE);
+    } else {
+        printf("2: recv=%d buffer_block_size=%lu buffer_total_size=%lu\n", recv, buffer_block_size, buffer_total_size);
+        kmip_print_hex_dump("recv", encoding, (int) buffer_total_size);
     }
     
     kmip_set_buffer(ctx, encoding, buffer_total_size);
@@ -1430,7 +1510,8 @@ int kmip_bio_send_request_encoding(KMIP *ctx, BIO *bio,
     
     kmip_decode_int32_be(ctx, &length);
     kmip_rewind(ctx);
-    if(length > ctx->max_message_size)
+    printf("3: length=%d\n", length);
+    if(length <= 0 || length > ctx->max_message_size)
     {
         kmip_free_buffer(ctx, encoding, buffer_total_size);
         encoding = NULL;
@@ -1453,10 +1534,18 @@ int kmip_bio_send_request_encoding(KMIP *ctx, BIO *bio,
     recv = BIO_read(bio, encoding + 8, length);
     if(recv != length)
     {
+        printf("4: recv=%d length=%d BIO_should_retry=%d, BIO_eof=%d\n", recv, length, BIO_should_retry(bio), BIO_eof(bio));
+        if (recv > 0) {
+            kmip_print_hex_dump("recv", encoding + 8, recv);
+        }
+
         kmip_free_buffer(ctx, encoding, buffer_total_size);
         encoding = NULL;
         kmip_set_buffer(ctx, NULL, 0);
         return(KMIP_IO_FAILURE);
+    } else {
+        printf("4: recv=%d buffer_block_size=%lu buffer_total_size=%lu\n", recv, buffer_block_size, buffer_total_size);
+        kmip_print_hex_dump("recv", encoding + 8, recv);
     }
     
     *response_size = buffer_total_size;

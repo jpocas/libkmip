@@ -7876,11 +7876,8 @@ kmip_encode_get_attributes_response_payload(KMIP *ctx, const GetAttributesRespon
     uint8 *length_index = ctx->index;
     uint8 *value_index = ctx->index += 4;
 
-    if(value->unique_identifier != NULL)
-    {
-        result = kmip_encode_text_string(ctx, KMIP_TAG_UNIQUE_IDENTIFIER, value->unique_identifier);
-        CHECK_RESULT(ctx, result);
-    }
+    result = kmip_encode_text_string(ctx, KMIP_TAG_UNIQUE_IDENTIFIER, value->unique_identifier);
+    CHECK_RESULT(ctx, result);
 
     uint8 *curr_index = ctx->index;
     ctx->index = length_index;
