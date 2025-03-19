@@ -407,6 +407,13 @@ enum name_type
     KMIP_NAME_URI                       = 0x02
 };
 
+enum object_group_member
+{
+    GROUP_MEMBER_FRESH   = 0x1,
+    GROUP_MEMBER_DEFAULT = 0x2
+    /* Extensions        = 0x8XXXXXXX */
+};
+
 enum object_type
 {
     /* KMIP 1.0 */
@@ -640,6 +647,13 @@ enum result_status
     KMIP_STATUS_OPERATION_FAILED  = 0x01,
     KMIP_STATUS_OPERATION_PENDING = 0x02,
     KMIP_STATUS_OPERATION_UNDONE  = 0x03
+};
+
+enum secret_data_type
+{
+    SECRET_DATA_PASSWORD = 0x1,
+    SECRET_DATA_SEED     = 0x2
+    /* Extensions        = 0x8XXXXXXX */
 };
 
 enum state

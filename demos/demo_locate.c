@@ -148,12 +148,13 @@ int use_low_level_api(KMIP *ctx, BIO *bio, Attribute* attribs, size_t attrib_cou
     rh.batch_count = 1;
 
     // copy input array to list
-    LinkedList *attribute_list = ctx->calloc_func(ctx->state, 1, sizeof(LinkedList));
+    Attributes *attributes = ctx->calloc_func(ctx->state, 1, sizeof(Attributes));
+    attributes->attribute_list = ctx->calloc_func(ctx->state, 1, sizeof(LinkedList));
     for(size_t i = 0; i < attrib_count; i++)
     {
         LinkedListItem *item = ctx->calloc_func(ctx->state, 1, sizeof(LinkedListItem));
         item->data = kmip_deep_copy_attribute(ctx, &attribs[i]);
-        kmip_linked_list_enqueue(attribute_list, item);
+        kmip_linked_list_enqueue(attributes->attribute_list, item);
     }
 
     LocateRequestPayload lrp = {0};
@@ -161,7 +162,7 @@ int use_low_level_api(KMIP *ctx, BIO *bio, Attribute* attribs, size_t attrib_cou
     lrp.offset_items = 0;
     lrp.storage_status_mask = 0;
     lrp.group_member_option = 0;
-    lrp.attributes = attribute_list;
+    lrp.attributes = attributes;
 
     RequestBatchItem rbi = {0};
     kmip_init_request_batch_item(&rbi);
@@ -468,7 +469,9 @@ use_mid_level_api(BIO* bio,
 
     int attrib_count = idx;
 
-    result = kmip_bio_locate_with_context(&kmip_context, bio, a, attrib_count, locate_result);
+    const int max_items = 128;
+    const int item_offset = 0;
+    result = kmip_bio_locate_with_context(&kmip_context, bio, a, attrib_count, locate_result, max_items, item_offset);
     //result = use_low_level_api(&kmip_context, bio, a, attrib_count, locate_result);
     
     /* Handle the response results. */
